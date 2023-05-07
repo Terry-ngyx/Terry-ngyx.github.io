@@ -1,6 +1,6 @@
 ---
 title: Process Hollowing
-date: 07-05-2023 12:00:00 -500
+date: 06-05-2023 12:00:00 -500
 name: Terry-ngyx
 featured-img: /assets/images/process_hollowing.png
 categories: []
