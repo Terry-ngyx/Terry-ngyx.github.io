@@ -1,6 +1,6 @@
 ---
 title: Generic Process Injection
-date: 17-04-2023 12:00:00 -500
+date: 16-04-2023 12:00:00 -500
 name: Terry-ngyx
 featured-img: /assets/images/process_injection2.png
 categories: []
