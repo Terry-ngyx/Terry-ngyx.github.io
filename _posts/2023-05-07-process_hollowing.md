@@ -121,7 +121,7 @@ With the necessary information retrieved and the function pointer defined, we ca
 gNtUnmapViewOfSection = (pfnNtUnmapViewOfSection)(GetProcAddress(GetModuleHandleA("ntdll"), "NtUnmapViewOfSection"));
 gNtUnmapViewOfSection(destProcess, destImageBase);
 ```
-The image below shows the memory regions of notepad.exe in the HxD Hex Editor before and after calling NtUnmapViewOfSection
+The image below shows the memory contents of notepad.exe in the HxD Hex Editor before and after calling NtUnmapViewOfSection
 
 ![HxD Process Hollowing](/assets/images/hxd_process_hollowing.png)
 
