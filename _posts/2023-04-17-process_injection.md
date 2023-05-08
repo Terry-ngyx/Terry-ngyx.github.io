@@ -11,20 +11,6 @@ tags: []
 
 As a result of my journey to better understand process injection, I've compiled a comprehensive set of notes and insights that I hope will be valuable to anyone looking to explore this topic. In this article, I'll share my understanding of process injections, including the different types and methods of implementation. A lot of the code taken in this section is referenced from the writeup from iredteam with a couple of tweaks of my own.
 
-# Table of contents
-
-- [What's Process Injection](#whats-process-injection)
-- [Caveats To Consider](#caveats-to-consider)
-    <!-- - [Image Relocations](#image-relocations) -->
-- [Detailed Overview](#detailed-overview)
-    - [Obtaining malicious code](#obtaining-malicious-code)
-    - [Locating the target process](#locating-the-target-process)
-    - [Allocating memory in the target process](#allocating-memory-in-the-target-process)
-    - [Modifying malicious code for compatibility](#modifying-malicious-code-for-compatibility)
-    - [Injecting malicious code](#injecting-malicious-code)
-    - [Obtaining entry point of malicious code](#obtaining-entry-point-of-malicious-code)
-    - [Executing malicious code](#executing-malicious-code)
-
 ## What's Process Injection
 
 Process injection is a technique used by attackers to execute malicious code on a system under the guise of a legitimate process. This allows attackers to evade detection, escalate privileges, establish persistence, and carry out other malicious activities. The process injection technique typically involves the allocation of memory in a remote process, followed by the injection of malicious code into that allocated memory. The injected code is then executed by creating a remote thread within the targeted process, which allows the attacker to control the process and execute their code within its context. This technique can be used for a variety of malicious purposes, and is a common tactic used by malware creators to compromise systems and steal sensitive information.

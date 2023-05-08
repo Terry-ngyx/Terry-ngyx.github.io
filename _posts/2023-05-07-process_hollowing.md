@@ -11,20 +11,6 @@ tags: []
 
  In this article, we'll go through a proof-of-concept of process hollowing and how it is different from other process injection techniques.
 
-# Table of contents
-
-- [What's Process Injection](#whats-process-injection)
-- [Caveats To Consider](#caveats-to-consider)
-    <!-- - [Image Relocations](#image-relocations) -->
-- [Detailed Overview](#detailed-overview)
-    - [Obtaining malicious code](#obtaining-malicious-code)
-    - [Locating the target process](#locating-the-target-process)
-    - [Allocating memory in the target process](#allocating-memory-in-the-target-process)
-    - [Modifying malicious code for compatibility](#modifying-malicious-code-for-compatibility)
-    - [Injecting malicious code](#injecting-malicious-code)
-    - [Obtaining entry point of malicious code](#obtaining-entry-point-of-malicious-code)
-    - [Executing malicious code](#executing-malicious-code)
-
 ## What's Process Injection
 
 Process hollowing is a type of process injection which is used to execute malicious code within the context of a remote process. While it shares similarities with generic process injection, there are several differences between the two techniques. Some of the main differences include:
