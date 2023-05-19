@@ -418,3 +418,11 @@ void _tmain(int argc, TCHAR* argv[]) {
 - [https://www.ired.team/offensive-security/code-injection-process-injection/process-hollowing-and-pe-image-relocations#code](https://www.ired.team/offensive-security/code-injection-process-injection/process-hollowing-and-pe-image-relocations#code)
 
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-7CTE714YRJ"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-7CTE714YRJ');
+</script>
