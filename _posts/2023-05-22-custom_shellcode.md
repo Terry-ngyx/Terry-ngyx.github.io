@@ -24,7 +24,7 @@ Shellcode exhibits special attributes, with two distinct characteristics being:
 
 
 ## Writing a win32 x32 shellcode
-In this proof of concept (POC), our objective is to develop a position-independent shellcode that dynamically resolves Win32 APIs at runtime. The goal is to execute the shellcode successfully and utilize the CreateProcessA API to spawn the notepad.exe process. To accomplish this, we can follow the steps outlined below:
+In this proof of concept (POC), our objective is to develop a position-independent shellcode that dynamically resolves Win32 APIs at runtime. The goal is to execute the shellcode successfully and utilize the CreateProcessA API to spawn the notepad.exe process. To accomplish this, we would need to obtain the absoluate address of the API in memory. This involves carrying out the steps outlined below:
 \
 &nbsp; 
 &emsp;[1. Obtaining the image base of kernel32.dll](#obtaining-the-image-base-of-kernel32)
@@ -47,6 +47,8 @@ In this proof of concept (POC), our objective is to develop a position-independe
 &nbsp;
 
 ## Obtaining the image base of kernel32
+The CreateProcessA API is a function that is exported by the kernel32.dll. The virtual address of the API is specified in the EXPORT_DIRECTORY structure in the library. Therefore, to obtain the absolute address of the CreateProcessA API, we first need to retrieve and parse the kernel32.dll PE (Portable Executable) structure.
+
 To retrieve the image base address of kernel32, we can leverage the Process Environment Block (PEB) structure to locate the modules loaded by the current process running the shellcode. The PEB address is specified in the Thread Environment Block (TEB), which is stored in the fs segment register. The address of the PEB is located within the TEB structure at an offset of 0x30.
 
 Once we have access to the PEB structure, the next step is to access the PEB_LDR_DATA. This data structure defines all the user-mode modules loaded by the process. The pointer to the PEB_LDR_DATA is located at an offset of 0x0C from the PEB structure.
