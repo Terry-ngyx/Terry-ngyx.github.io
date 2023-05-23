@@ -509,7 +509,8 @@ API hashing adds a layer of indirection and complexity to evade detection of the
 During runtime, an API hashing algorithm is utilized to generate a hash value based on the name or signature of the API function. The generated hash value is then compared to a pre-generated hash that is hardcoded in the malware. This matching process allows the malware to locate the desired functions dynamically without exposing the API names directly.
 
 ## References
-- [https://www.ired.team/offensive-security/code-injection-process-injection/process-hollowing-and-pe-image-relocations#code](https://www.ired.team/offensive-security/code-injection-process-injection/process-hollowing-and-pe-image-relocations#code)
+- [https://www.codeproject.com/Articles/325776/The-Art-of-Win32-Shellcoding](https://www.codeproject.com/Articles/325776/The-Art-of-Win32-Shellcoding)
+- [https://www.ired.team/offensive-security/defense-evasion/windows-api-hashing-in-malware](https://www.ired.team/offensive-security/defense-evasion/windows-api-hashing-in-malware)
 
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-7CTE714YRJ"></script>
