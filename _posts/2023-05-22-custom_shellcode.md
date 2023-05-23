@@ -2,14 +2,16 @@
 title: x32 Shellcode - Resolving Win32 APIs
 date: 22-05-2023 12:00:00 -500
 name: Terry-ngyx
-featured-img: /assets/images/process_hollowing.png
 categories: []
 tags: []
 ---
+
 ## Introduction
 ![Process Injection](/assets/images/shellcode.png)
 
 In this section, I present a proof of concept for a custom shellcode written in assembly. It originated from my personal study notes while exploring the intricacies of assembly programming and delving into the realm of position-independent shellcode. I hope this write-up proves beneficial in supporting others on their journey who are pursuing similar goals.
+
+Also, note that all the headers for the code blocks state that the language is in nasm which is not true. We will be using masm in this PoC. The headers only specify nasm because the engine used to create these static HTML blogs only support syntax highlighting in nasm :cat: .
 
 ## What is shellcode?
 
@@ -55,7 +57,7 @@ The pointer to the first entry of the InLoadOrderModuleList can be found at an o
 
 By following this approach, we can dynamically obtain the image base address of kernel32.dll, enabling us to interact with its exported functions or perform other operations within the context of the loaded module.
 
-```x86asm
+```nasm
 	;========================================
 	;Locate kernel32.dll
 	;========================================
@@ -99,7 +101,7 @@ Since we have obtained the base address of kernel32.dll, we can now traverse the
 |:--:| 
 | *Image taken from https://resources.infosecinstitute.com/topic/the-export-directory/* |
 
-```x86asm
+```nasm
 	;========================================
 	;Parse the EXPORT_DIRECTORY table
 	;========================================
@@ -173,7 +175,7 @@ Now that we have the hash, we can start iterating through the arrays to obtain t
 - The ordinal value/element in the AddressOfNameOrdinals table indicates the index of the function in the AddressOfFunctions table.
 - The value of the address for the API in the current iteration is now obtained.
 
-```x86asm
+```nasm
 
 	;========================================
 	;Loop through the AddressOfNames table
@@ -208,7 +210,7 @@ Now that we have the hash, we can start iterating through the arrays to obtain t
 
 Once we have the address, we can now proceed to hash the name of the API in the current iteration. This is done by looping through all the characters in the API name string and carrying out our hashing algorithm discussed above. This is done until we reach the end of the string which is a null byte.
 
-```x86asm
+```nasm
 	;Carry out API hashing
 	ApiHashing:
 	mov ebx, CharPointer
@@ -229,7 +231,7 @@ Once we have the address, we can now proceed to hash the name of the API in the 
 ## Matching against the desired API through API hashes
 When the end of the string has been reached, the execution flow will jump to NextFunction label. By modifying the NextFunction label, we can check if the hash value of the API matches that of our pre-calculated hash for CreateProcessA which is 0x00b05617. If it matches, it would jump to our APIFound label. If not, it will proceed to the next API entry of the AddressOfNames table.
 
-```x86asm
+```nasm
 	NextFunction:
 	mov eax, [Hash]
 	cmp eax, 00b05617h
@@ -243,7 +245,7 @@ When the end of the string has been reached, the execution flow will jump to Nex
 ## Calling the API
 Now that we have resolved the address of the CreateProcessA API as shown below, we can use it to call the API as we would do in a normal assembly program. 
 
-```x86asm
+```nasm
 	;================================
 	;Save address of desired function
 	;================================
@@ -273,7 +275,7 @@ To proceed, we need to provide three arguments: lpCommandLine, lpStartupInfo, an
 While it may seem counter-intuitive to utilize plaintext strings after investing effort in API hashing, for the sake of simplicity in this proof of concept (PoC), we will continue to use them. However, it's important to note that masquerading techniques can be implemented to conceal the plaintext strings if desired. These techniques can add an additional layer of obfuscation and enhance the overall security of the shellcode.
 
 With all the necessary arguments in place, we can now push these variables onto the stack and invoke the API to spawn the notepad.exe process.
-```x86asm
+```nasm
 	;================================
 	;Call CreateProcessA
 	;================================
@@ -317,7 +319,7 @@ With all the necessary arguments in place, we can now push these variables onto 
 ```
 
 ## Complete code
-```x86asm
+```nasm
 .386
 .model flat, stdcall
 OPTION  CaseMap:None
