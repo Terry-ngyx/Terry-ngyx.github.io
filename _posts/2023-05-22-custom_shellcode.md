@@ -510,7 +510,7 @@ During runtime, an API hashing algorithm is utilized to generate a hash value ba
 
 ## References
 - [https://www.codeproject.com/Articles/325776/The-Art-of-Win32-Shellcoding](https://www.codeproject.com/Articles/325776/The-Art-of-Win32-Shellcoding)
-
+- [https://www.ired.team/offensive-security/defense-evasion/windows-api-hashing-in-malware](https://www.ired.team/offensive-security/defense-evasion/windows-api-hashing-in-malware)
 
 <script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-7CTE714YRJ"></script>
